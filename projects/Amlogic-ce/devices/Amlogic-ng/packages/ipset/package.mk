@@ -1,0 +1,15 @@
+PKG_NAME="ipset"
+PKG_VERSION="7.11"
+PKG_LICENSE="GPL"
+PKG_SITE="http://ipset.netfilter.org"
+PKG_URL="http://ipset.netfilter.org/ipset-7.11.tar.bz2"
+PKG_DEPENDS_TARGET="toolchain libmnl"
+PKG_TOOLCHAIN="autotools"
+PKG_SHORTDESC="IPSET"
+PKG_LONGDESC="IPSET"
+
+#PKG_IS_ADDON="no"
+#PKG_AUTORECONF="yes"
+
+#PKG_CONFIGURE_OPTS_TARGET="--disable-shared --enable-static"
+PKG_CONFIGURE_OPTS_TARGET="--with-kbuild=$(kernel_path) CPPFLAGS=-I${SYSROOT_PREFIX}/usr/include"
