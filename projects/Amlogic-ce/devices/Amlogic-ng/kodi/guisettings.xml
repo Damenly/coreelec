@@ -1,0 +1,4 @@
+<settings version="2">
+  <setting id="smb.minprotocol">1</setting>
+  <setting id="coreelec.amlogic.force422">true</setting>
+</settings>
