@@ -159,3 +159,7 @@
 
   # CoreELEC Subdevices
     SUBDEVICES="Phicomm_N1"
+
+  # TEE supported SoC
+    TEE_SOC="S905X4"
+
