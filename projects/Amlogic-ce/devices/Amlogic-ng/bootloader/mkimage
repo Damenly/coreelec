@@ -64,6 +64,10 @@ if [ "${SUBDEVICE}" != "Generic" ]; then
       mcopy $RELEASE_DIR/3rdparty/bootloader/libretech_chain_boot "::/boot.scr"
     fi
   fi
+  
+  if [ "${SUBDEVICE}" == "Phicomm_N1" ]; then
+    mcopy $RELEASE_DIR/3rdparty/bootloader/uInitrd ::
+  fi
 
   if [ "${SUBDEVICE:0:10}" == "Radxa_Zero" ]; then
     if [ -f "$RELEASE_DIR/3rdparty/bootloader/radxa-boot-logo-1080.bmp.gz" ]; then

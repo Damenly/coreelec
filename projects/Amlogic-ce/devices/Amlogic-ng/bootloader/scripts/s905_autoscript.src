@@ -1,0 +1,7 @@
+if test ${bootfromnand} = 1; then setenv bootfromnand 0; saveenv; run storeboot; fi;
+setenv env_addr "0x10400000"
+setenv kernel_addr "0x11000000"
+setenv initrd_addr "0x13000000"
+setenv boot_start booti ${kernel_addr} ${initrd_addr} ${dtb_mem_addr};
+if fatload usb 0 ${kernel_addr} kernel.img; then if fatload usb 0 ${initrd_addr} uInitrd; then if fatload usb 0 ${env_addr} boot.ini; then env import -t ${env_addr} ${filesize}; fi; if fatload usb 0 ${dtb_mem_addr} ${dtb_name}; then run boot_start; else store dtb read ${dtb_mem_addr}; run boot_start; fi; fi; fi;
+if fatload usb 1 ${kernel_addr} kernel.img; then if fatload usb 1 ${initrd_addr} uInitrd; then if fatload usb 1 ${env_addr} boot.ini; then env import -t ${env_addr} ${filesize}; fi; if fatload usb 1 ${dtb_mem_addr} ${dtb_name}; then run boot_start; else store dtb read ${dtb_mem_addr}; run boot_start; fi; fi; fi;

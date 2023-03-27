@@ -1,0 +1,23 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (c) 2019 Rural Hunter
+ */
+
+#include "../gxl_p230_2g_buildroot.dts"
+#include "coreelec_gxl.dtsi"
+
+/ {
+	compatible = "phicomm,n1", "amlogic,s905d", "amlogic,meson-Gxl";
+	model = "Phicomm,N1";
+	coreelec-dt-id = "meson_gxl_s905d_phicomm_n1";
+
+	cvbs-connector {
+		status = "disabled";
+	};
+	
+	dwc2_a {
+		controller-type = <1>; /** 0: normal,1:host,2:device,3:otg*/
+	};
+};
+
+
