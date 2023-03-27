@@ -233,7 +233,7 @@ make_target() {
 
   if [ "$BUILD_ANDROID_BOOTIMG" = "yes" ]; then
     find_file_path bootloader/mkbootimg && source ${FOUND_PATH}
-    mv -f arch/$TARGET_KERNEL_ARCH/boot/boot.img arch/$TARGET_KERNEL_ARCH/boot/$KERNEL_TARGET
+#    mv -f arch/$TARGET_KERNEL_ARCH/boot/boot.img arch/$TARGET_KERNEL_ARCH/boot/$KERNEL_TARGET
   fi
 
   if [ "$PKG_BUILD_PERF" = "yes" ] ; then
