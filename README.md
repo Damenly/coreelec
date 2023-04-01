@@ -1,3 +1,8 @@
+# CoreELEC for Phicomm N1
+
+# Upgrade
+Put the update package(CoreELEC-Amlogic-ng.arm-xxx.tar) in /storage/.update/, then reboot.
+
 # CoreELEC
 
 CoreELEC is a 'Just enough OS' Linux distribution for running the award-winning [Kodi](https://kodi.tv) software on popular low-cost hardware. CoreELEC is a minor fork of [LibreELEC](https://libreelec.tv), it's built by the community for the community. [CoreELEC website](http://coreelec.org).
