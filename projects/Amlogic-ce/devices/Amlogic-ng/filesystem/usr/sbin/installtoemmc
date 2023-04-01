@@ -1,166 +1,139 @@
 #!/bin/bash
 
-# SPDX-License-Identifier: GPL-2.0-or-later
-# Copyright (C) 2018-present Team CoreELEC (https://coreelec.org)
+################################################################################
+#      This file is part of CoreELEC - https://coreelec.org
+#      Copyright (C) 2018-present CoreELEC (team (at) coreelec.org)
+#      Copyright (C) 2016-18 kszaq (kszaquitto (at) gmail.com)
+#      Copyright (C) 2023-presetn Su Yue (glass (at) fydeos.io)
+#
+#  CoreELEC is free software: you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation, either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  CoreELEC is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with CoreELEC.  If not, see <http://www.gnu.org/licenses/>.
+################################################################################
 
-DISTRO_BOOTLABEL="COREELEC"
-DISTRO_DISKLABEL="STORAGE"
-SYSTEM_PART_START=8192
-SYSTEM_SIZE=512
-SYSTEM_PART_END=$(( ${SYSTEM_PART_START} + (${SYSTEM_SIZE} * 1024 * 1024 / 512) - 1 ))
-STORAGE_PART_START=$(( ${SYSTEM_PART_END} + 1 ))
+IMAGE_KERNEL="/flash/kernel.img"
+IMAGE_SYSTEM="/flash/SYSTEM"
+IMAGE_DTB="/flash/dtb.img"
+rootfs="/dev/CE_FLASH"
+storage="/dev/CE_STORAGE"
+root_part=""
+data_part=""
 
-SYSTEM_BLKDEV=$(readlink -f /dev/block/$(mountpoint -d /flash))
-BLKDEVNAME=$(ls /sys/class/mmc_host/emmc/emmc*/block 2> /dev/null)
-BLKDEV="/dev/${BLKDEVNAME}"
-BOOT_PART="${BLKDEV}p1"
-STORAGE_PART="${BLKDEV}p2"
-NEWBOOT=/var/media/NEWBOOT
-NEWSTORAGE=/var/media/NEWSTORAGE
-DT_ID=$(dtname)
+BACKUP_DATE=$(date +%Y%m%d%H%M%S)
 
-umount_all() {
-  mounted=$(cat /proc/mounts | grep "${BLKDEV}" | awk '{ print $1 }')
-  if [ -n "$mounted" ]; then
-    echo "Unmount all partitions from ${BLKDEVNAME}..."
-    umount $mounted
-    sleep 2
+error()
+{
+	echo $1;
+	exit 1
+}
+
+if [ ! -b "$rootfs" ] && [ -b /dev/system ]; then
+    rootfs="/dev/system"
+    storage="/dev/data"
+fi
+
+[ ! -b "$rootfs" ] && error "can't found rootfs(/dev/system or /dev/CE_FLASH)"
+[ ! -b "$storage" ] && error "can't found storage(/dev/data or /dev/CE_STORAGE)"
+
+install_to_nand() {
+  if [ -f $IMAGE_KERNEL -a -f $IMAGE_SYSTEM ] ; then
+
+    if grep -q ${rootfs} /proc/mounts ; then
+      echo "Unmounting SYSTEM partiton."
+      umount -f ${rootfs} || exit 1
+    fi
+    mkdir -p /tmp/system
+
+    mount -o rw,remount /flash
+
+    echo -n "Formatting SYSTEM partition..."
+    mke2fs -F -q -t ext4 -L SYSTEM ${rootfs} || exit 1
+    echo "done."
+
+    echo -n "Copying SYSTEM files..."
+    mount -o rw ${rootfs} /tmp/system
+    cp -pPR /flash/. /tmp/system && sync
+    export $(/sbin/fw_printenv mac)
+    export $(/sbin/fw_printenv mac_wifi)
+
+    sed -e "s/mac_wifi=.........../mac_wifi=${mac_wifi}/" -i /tmp/system/boot.ini
+    sed -e "s/bootargs=.* BOOT_I/bootargs=boot=LABEL=SYSTEM disk=LABEL=DATA BOOTI/" -i /tmp/system/boot.ini
+    echo "done."
+
+    umount /tmp/system
+
+    choice=y
+    case "$choice" in
+      [nN]*)
+        choice=y
+        case "$choice" in
+          [nN]*)
+            ;;
+          *)
+            echo -n "Formatting DATA partition..."
+            mke2fs -F -q -t ext4 -L DATA ${storage} > /dev/null
+            echo "done."
+        esac  
+        ;;
+      *)
+        echo -n "Formatting DATA partition..."
+        mke2fs -F -q -t ext4 -L DATA ${storage} > /dev/null
+        echo "done."
+
+        echo -n "Stopping Kodi..."
+        systemctl stop kodi
+        echo "done."
+        echo "Copying user data..."
+        mkdir -p /tmp/data
+        mount -o rw ${storage} /tmp/data
+        cp -pPR /storage/. /tmp/data
+        ;;
+    esac
+
+    echo "All done!"
+    echo "WARNING: If your internal memory layout is different from standard Amlogic, you have to perform this operation again!"
+    echo "Your system will reboot from internal memory."
+    echo ""
+
+    root_part="$(printf "%x" $root_part)"
+    choice=y
+    case "$choice" in
+      [yY]*)
+        /usr/sbin/fw_setenv start_autoscript 'if usb start ; then run start_usb_autoscript; fi; for i in 0 1 2 3 4 6 7 8 9 a b c d e; do if ext4load mmc 1:${i} 1020000 /s905_autoscript; then autoscr 1020000; fi; done'
+        #/usr/sbin/reboot
+        shutdown now
+        ;;
+    esac
+
+  else
+    echo "No LE image found on /flash! Exiting..."
   fi
 }
 
-confirm_move() {
-if [ -z "$BLKDEVNAME" ]; then
-  echo "eMMC not found."
+if [ ! -b ${rootfs} -o ! -b ${storage} ]; then
+  echo "One of BOOT, SYTEM, DATA partitions is missing."
+  echo "Make sure that you are using a correct device tree and a device with internal memory!"
   exit 0
 fi
-echo "--------------------------------------------------"
+
+echo "This script will erase BOOT, SYSTEM, DATA and DTB on your device"
+echo "and install LE that you booted from SD card/USB drive."
 echo ""
-echo "This script will now erase the eMMC on your device"
-echo "All data on this eMMC will be lost forever!"
+echo "It will create a backup of device tree and recovery partition on your boot media."
 echo ""
-read -p "Type \"yes\" if you know what you are doing or anything else to exit: " choice
+echo "The script does not have any safeguards!"
+echo ""
+
+choice=yes
 case "$choice" in
-  yes) install_to_emmc ;;
-    *) exit 0 ;;
+  yes) install_to_nand ;;
 esac
-
-}
-
-install_to_emmc() {
-
-  #stop kodi
-  echo "Stopping Kodi..."
-  systemctl stop kodi
-
-  # umount
-  umount_all
-
-  # nuke it
-  echo "Delete all partitions..."
-  dd if=/dev/zero of=${BLKDEV} bs=512 count=1
-
-  # create partitions
-  echo "Create new partitions..."
-  parted -s "${BLKDEV}" mklabel "msdos"
-  parted -s "${BLKDEV}" -a min unit s mkpart primary fat32 "${SYSTEM_PART_START}" "${SYSTEM_PART_END}"
-  parted -s "${BLKDEV}" set 1 boot on
-  parted -s "${BLKDEV}" -a min unit s mkpart primary ext4 "${STORAGE_PART_START}" "100%"
-  sync
-
-  # Flash u-boot
-  echo "Flash Bootloader..."
-  dd if=/usr/share/bootloader/${DEVICE}_u-boot of=${BLKDEV} conv=fsync bs=1 count=112 status=none
-  dd if=/usr/share/bootloader/${DEVICE}_u-boot of=${BLKDEV} conv=fsync bs=512 skip=1 seek=1 status=none
-  sync
-
-  # create fs for new /flash
-  echo "Create Filesystem for new flash partition..."
-  mkfs.vfat -n "${DISTRO_BOOTLABEL}" "${BOOT_PART}" ; sync
-
-  # create fs for new /storage
-  echo "Create Filesystem for new storage partition..."
-  mke2fs -F -q -L "${DISTRO_DISKLABEL}" -t ext4 -m 0 "${STORAGE_PART}" ; sync
-
-  # umount again
-  umount_all
-
-  # mount
-  echo "Mount new partitions..."
-  mkdir -p "${NEWBOOT}" "${NEWSTORAGE}"
-  mount "${BOOT_PART}" "${NEWBOOT}"
-  mount "${STORAGE_PART}" "${NEWSTORAGE}"
-
-  # cp /flash files
-  echo "Copy /flash files to new flash partition..."
-  cp -a /flash/kernel.img /flash/SYSTEM /flash/dtb.img ${NEWBOOT}
-  echo "Copy template boot.ini..."
-  cp -a /usr/share/bootloader/${DEVICE}_boot.ini ${NEWBOOT}/boot.ini
-  echo "Copy config.ini..."
-  if [ -e /flash/config.ini ]; then
-    cp -a /flash/config.ini ${NEWBOOT}
-  else
-    cp -a /usr/share/bootloader/config.ini ${NEWBOOT}
-  fi
-  sync
-
-  # set our new UUID's
-  BOOT_UUID="$(blkid ${BOOT_PART} | sed 's/.* UUID="//;s/".*//g')"
-  STORAGE_UUID="$(blkid ${STORAGE_PART} | sed 's/.* UUID="//;s/".*//g')"
-  echo "Set UUIDs in new boot.ini..."
-  sed -e "s/@BOOT_UUID@/$BOOT_UUID/" \
-      -e "s/@DISK_UUID@/$STORAGE_UUID/" \
-      -i ${NEWBOOT}/boot.ini
-
-  # check if there is enough space
-  space_available=$(df "${NEWSTORAGE}" | awk 'NR==2 { print $4 }')
-  space_required=$(df "/storage/" | awk 'NR==2 { print $3 }')
-  if [ $space_available -ge $space_required ]; then
-    # rsync userdata
-    echo "Rsync /storage files to new storage partition..."
-    rsync -Pa /storage/ $NEWSTORAGE/
-  else
-    echo "Not enough space on the new storage partition. Skipping... "
-  fi
-
-  umount_all
-
-  echo "All done! Please poweroff your device and remove the SD/USB."
-  echo "Enjoy!"
-}
-
-if [ "$SYSTEM_BLKDEV" = "/dev/block" -o "$SYSTEM_BLKDEV" = "$BOOT_PART" ]; then
-  echo "No no no no no! Don't use that script from eMMC otherwise it will eat your data!"
-  exit 1
-fi
-
-case $DT_ID in
-  *odroid_n2*)
-    DEVICE="Odroid_N2"
-    ;;
-  *)
-    echo "This script is only for Odroid N2. It won't work on other devices!"
-    exit 1
-    ;;
-esac
-
-echo $DEVICE
-
-if [ "$DEVICE" = "Odroid_N2" ]; then
-  echo "This script will help you move a CoreELEC install on to an Odroid_N2 eMMC module"
-  echo "from an existing CoreELEC install on an SD card or USB drive."
-  echo ""
-  echo "Before begining you will need to have an eMMC properly attached to your N2."
-  echo "You will also need to start your N2 with the boot mode switch in the SPI position"
-  echo "and boot your existing SD card or USB install using the petitboot menu."
-  echo "After you move your CoreELEC install to the eMMC module you can return the"
-  echo "boot mode switch to the MMC position for regular use."
-  echo ""
-  echo "Make sure when adding or removing the eMMC module or when toggling the boot mode"
-  echo "switch that your Odroid N2 is powered off."
-  echo ""
-  read -p "Type \"yes\" if you know what you are doing or anything else to exit: " choice
-  case "$choice" in
-    yes) confirm_move ;;
-      *) exit 0 ;;
-  esac
-fi
