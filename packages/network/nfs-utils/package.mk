@@ -43,6 +43,9 @@ pre_configure_host() {
     --disable-tirpc \
     --without-systemd \
     --without-tcp-wrappers"
+
+  # for Ubuntu 22 with libntirpc-dev package installed
+  CFLAGS+=" -I/usr/include/tirpc"
 }
 
 pre_configure_target() {
