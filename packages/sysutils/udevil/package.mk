@@ -25,7 +25,11 @@ post_makeinstall_target() {
     cp ${PKG_DIR}/config/udevil.conf ${INSTALL}/etc/udevil
 
   mkdir -p ${INSTALL}/usr/bin
-    cp -PR src/udevil ${INSTALL}/usr/bin
+  cp -PR src/udevil ${INSTALL}/usr/bin
+
+  [ -d "${INSTALL}/usr/sbin/" ] || mkdir -p "${INSTALL}/usr/sbin"
+  echo -e '#!/bin/sh\nexec /usr/bin/mount -tntfs3 "$@"' > ${INSTALL}/usr/sbin/mount.ntfs || true
+  chmod 755 ${INSTALL}/usr/sbin/mount.ntfs
 }
 
 post_install() {
