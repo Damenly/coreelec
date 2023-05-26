@@ -8,10 +8,11 @@ if [ "$(uname -r)" = "3.14.29" ]; then
   exit 1
 fi
 
-# allow upgrades between aarch64 and arm images
+DEVICE_OLD=$(echo "${1}" | cut -d. -f1)
+DEVICE_NEW=$(echo "${2}" | cut -d. -f1)
 
-PROJECT=$(echo "${1}" | /sysroot/usr/bin/cut -d. -f1)
-if [ "${1}" = "${PROJECT}.aarch64" -o "${1}" = "${PROJECT}.arm" ]; then
+# allow upgrades between aarch64 and arm images on same device
+if [ "${DEVICE_OLD}" = "${DEVICE_NEW}" ]; then
   exit 0
 else
   exit 1
