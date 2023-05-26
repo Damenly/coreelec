@@ -9,8 +9,9 @@ if [ "$(uname -r)" = "3.14.29" ]; then
 fi
 
 # allow upgrades between aarch64 and arm images
-PROJECT=$(echo "$1" | /sysroot/usr/bin/cut -d. -f1)
-if [ "$1" = "${PROJECT}.aarch64" -o "$1" = "${PROJECT}.arm" ]; then
+
+PROJECT=$(echo "${1}" | /sysroot/usr/bin/cut -d. -f1)
+if [ "${1}" = "${PROJECT}.aarch64" -o "${1}" = "${PROJECT}.arm" ]; then
   exit 0
 else
   exit 1
