@@ -121,6 +121,9 @@ makeinstall_target() {
     cp ${PKG_DIR}/scripts/sudo ${INSTALL}/usr/bin/
     cp ${PKG_DIR}/scripts/pastebinit ${INSTALL}/usr/bin/
     cp ${PKG_DIR}/scripts/convert_dtname ${INSTALL}/usr/bin
+      sed -e "s/@DISTRONAME@-@OS_VERSION@/${DISTRONAME}-$OS_VERSION/g" \
+          -i ${INSTALL}/usr/bin/pastebinit
+
       ln -sf pastebinit ${INSTALL}/usr/bin/paste
     cp ${PKG_DIR}/scripts/vfd-clock ${INSTALL}/usr/bin/
 
