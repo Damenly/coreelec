@@ -5,4 +5,6 @@
 # Copyright (C) 2017-present Team LibreELEC (https://libreelec.tv)
 # Copyright (C) 2023-present Team CoreELEC (https://coreelec.org)
 
-cat "$@" | curl -F 'sprunge=<-' https://paste.coreelec.org
+token=$(echo "@DISTRONAME@-@OS_VERSION@" | sha256sum | cut -d ' ' -f 1)
+
+cat "$@" | curl https://paste.libreelec.tv -F 'file=@-' -H "Authorization: Bearer ${token}"
