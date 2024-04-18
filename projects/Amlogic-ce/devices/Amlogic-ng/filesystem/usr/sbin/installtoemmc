@@ -36,6 +36,7 @@ error()
 	exit 1
 }
 
+error "installtoemmc does not support N1 !!!!!!"
 if [ ! -b "$rootfs" ] && [ -b /dev/system ]; then
     rootfs="/dev/system"
     storage="/dev/data"
